@@ -90,7 +90,7 @@ CREATE INDEX my_remote_index ON products USING remote (embedding) with (host = '
 ```
 - By specifying the `spec` of the pinecone index. For example,
 ```sql
-CREATE INDEX my_remote_index ON products USING remote (embedding) with (spec = '"spec": {
+CREATE INDEX my_remote_index ON products USING remote (embedding) with (spec = '{
         "serverless": {
             "region": "us-west-2",
             "cloud": "aws"
