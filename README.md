@@ -22,7 +22,7 @@ with the power of remote vector databases, by introducing a new remote vector in
 
 ```sql
 CREATE TABLE products (name text, embedding vector(1536), price float);
-CREATE INDEX my_remote_index ON products USING pinecone (embedding, price) with (host = 'my-pinecone-index.pinecone.io');
+CREATE INDEX my_remote_index ON products USING remote (embedding, price) with (host = 'my-pinecone-index.pinecone.io');
 -- [insert, update, and delete billions of records in products]
 SELECT * FROM products WHERE price < 40.0 ORDER BY embedding <-> '[...]' LIMIT 10; -- pinecone performs this query, including the price predicate
 
@@ -86,11 +86,11 @@ ALTER DATABASE mydb SET pinecone.api_key = 'xxxxxxxx-xxxx-xxxx-xxxx–xxxxxxxxxx
 There are two ways to specify the pinecone index:
 - By providing the host of an existing pinecone index. For example,
 ```sql
-CREATE INDEX my_remote_index ON products USING pinecone (embedding) with (host = 'example-23kshha.svc.us-east-1-aws.pinecone.io');
+CREATE INDEX my_remote_index ON products USING remote (embedding) with (host = 'example-23kshha.svc.us-east-1-aws.pinecone.io');
 ```
 - By specifying the `spec` of the pinecone index. For example,
 ```sql
-CREATE INDEX my_remote_index ON products USING pinecone (embedding) with (spec = '"spec": {
+CREATE INDEX my_remote_index ON products USING remote (embedding) with (spec = '"spec": {
         "serverless": {
             "region": "us-west-2",
             "cloud": "aws"
