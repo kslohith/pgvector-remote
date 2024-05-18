@@ -36,6 +36,48 @@ const char* vector_metric_to_pinecone_metric[VECTOR_METRIC_COUNT] = {
     "dotproduct"
 };
 
+int extract_dimension(const cJSON *root) {
+    const cJSON *dimension = cJSON_GetObjectItemCaseSensitive(root, "dimension");
+    if (dimension == NULL || !cJSON_IsNumber(dimension)) {
+        fprintf(stderr, "Error: 'dimension' value not found or not a number.\n");
+        return -1;
+    }
+    return dimension->valueint;
+}
+
+char* get_index_name(char* host) {
+    const char* prefix = "pgvr-";
+    const char* start;
+    const char* end;
+    char* name = NULL;
+
+    // Find the prefix in the URL
+    start = strstr(host, prefix);
+    if (start == NULL) {
+        fprintf(stderr, "Prefix not found in URL.\n");
+        return NULL;
+    }
+
+    // Find the end of the name
+    end = start + strlen(prefix);
+    while (isdigit(*end)) {
+        end++;
+    }
+
+    // Allocate memory for the name
+    name = (char*)malloc(end - start + 1);
+    if (name == NULL) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        return NULL;
+    }
+
+    // Copy the name into the allocated memory
+    strncpy(name, start, end - start);
+    name[end - start] = '\0'; // Null-terminate the string
+
+    return name;
+}
+
 void pinecone_spec_validator(const char* spec) {
     if (spec == NULL || cJSON_Parse(spec) == NULL) {
         ereport(ERROR,
@@ -85,6 +127,7 @@ char* pinecone_create_host_from_spec(int dimensions, VectorMetric metric, char* 
     // pgvr-<Oid>
     char* pinecone_index_name = palloc(20);
     sprintf(pinecone_index_name, "pgvr-%u", index->rd_id);
+    elog(WARNING,"Pinecone api key passed is %s index name is %s", pinecone_api_key, pinecone_index_name);
     // TODO: remote index name
     create_response = remote_create_index(pinecone_api_key, pinecone_index_name, dimensions, remote_metric_name, spec_json);
     host = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(create_response, "host"));
@@ -105,6 +148,12 @@ char* pinecone_create_host_from_spec(int dimensions, VectorMetric metric, char* 
 // CREATE AND MISC
 void pinecone_validate_host_schema(char* host, int dimensions, VectorMetric metric, Relation index) {
     // TODO: check that the host's schema matches the table
+    char* index_name = get_index_name(host);
+    cJSON* index_details = describe_index( pinecone_api_key, index_name);
+    int pinecone_dimensions = extract_dimension(index_details);
+    if(pinecone_dimensions != dimensions){
+        elog(ERROR, "Vector Dimension of the local table is %d but the dimension specified in the remote index is %d", dimensions, pinecone_dimensions);
+    }
     return;
 }
 
@@ -287,6 +336,7 @@ bool pinecone_bulk_upsert(char* host, PreparedBulkInsert prepared_vectors,  int 
     }
     return false;
 }
+
 
 
 RemoteIndexInterface pinecone_remote_index_interface = {
